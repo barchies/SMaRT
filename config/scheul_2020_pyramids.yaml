@@ -1,0 +1,191 @@
+# Configuration pour la validation texture pyramidale - Scheul et al. (2020)
+# Échantillon de silicium nu avec pyramides KOH
+#
+# Référence: \cite{Scheul2020} - voir bibliography/references.bib
+# Progress in Photovoltaics 28(12):1248-1257, DOI: 10.1002/pip.3319
+#
+# NOTE: Paramètres ajustés sur les données expérimentales
+
+description: "Pyramidal texture validation against Scheul 2020 hemispherical reflectance"
+
+# Structure de l'échantillon (très simple: Air / Si pyramidal / Air)
+# Pas d'encapsulation, pas d'ARC
+structure:
+  layers:
+    - name: air_front
+      material: air
+      thickness_m: .inf
+      thickness_uncertainty_m: 0.0
+
+    - name: silicon
+      material: c-si
+      thickness_m: 270.0e-6       # ~270 µm (wafer épais)
+      thickness_uncertainty_m: 10.0e-6   # ±10 µm (1σ)
+      optical_data: silicon_green2008.csv  # n(λ), k(λ) de Green 2008
+      surface_front: pyramidal_koh
+      surface_rear: polished
+
+    - name: air_rear
+      material: air
+      thickness_m: .inf
+      thickness_uncertainty_m: 0.0
+
+# Géométrie des pyramides (face avant)
+# Pyramides aléatoires formées par attaque KOH sur Si (100)
+pyramidal_texture:
+  type: random_upright
+  etch_method: KOH
+  substrate_orientation: "(100)"
+
+  # Angle de facette idéal pour Si <111>
+  ideal_facet_angle_deg: 54.74   # arctan(sqrt(2)) = 54.74°
+
+  # Angle de facette mesuré par FIB-SEM (Scheul 2020)
+  facet_angle_deg: 52.1
+  facet_angle_uncertainty_deg: 1.1   # ±1.1° (1σ)
+
+  # Paramètres géométriques typiques
+  pyramid_height_um: 3.0             # Hauteur moyenne
+  pyramid_height_uncertainty_um: 0.5 # Variabilité
+
+  # Paramètres de rugosité ajustés (FITTED sur données Scheul)
+  roughness_fitted:
+    sigma_rms_nm: 7.5       # Rugosité RMS des facettes
+    valley_fraction: 0.0    # Fraction de vallées plates (0 = pas de vallées)
+    alpha_eff_deg: 52.1     # Angle effectif des facettes (degrés)
+    alpha_eff_std_deg: 1.1  # Incertitude mesure FIB-SEM (1σ)
+
+  # Paramètres pour distribution angulaire I(θ) - OPTIMIZED
+  scattering_distribution:
+    # Distribution réelle des angles de facette sur la surface
+    # Plus large que l'incertitude de mesure car chaque pyramide varie
+    alpha_surface_std_deg: 2.0   # σ distribution sur la surface (degrés)
+    # Diffusion par micro-rugosité des facettes
+    roughness_scatter_deg: 2.75  # Élargissement par rugosité (degrés)
+    # Acceptance angulaire du détecteur WARS
+    detector_acceptance_deg: 2.25 # Convoluer avec sortie modèle (degrés)
+
+  # Fraction de rayons s'échappant après rebond simple (géométrie-dépendant)
+  single_bounce_escape_fraction: 0.08   # ~8% pour bonnes pyramides
+
+# Face arrière (polie)
+rear_surface:
+  type: polished
+  roughness_rms_nm: 1.0     # Typique pour polissage miroir
+
+# Paramètres de simulation S-matrix
+simulation:
+  wavelength:
+    min_nm: 300
+    max_nm: 1200
+    step_nm: 5              # Résolution fine pour texture
+  reference_wavelength_nm: 600  # Pour calculs Fresnel monochromatiques
+
+  # Angle d'incidence pour la mesure
+  incidence_angle_deg: 8    # Proche-normale
+
+  # Moyennage de phase adaptatif
+  phase_averaging:
+    adaptive: true
+    coverage_sigma: 2.0
+    n_phase_max: 64
+
+  polarization: average
+  diffuse_model: none       # Texture gérée par ray-tracing
+
+  # Paramètres ray-tracing pour texture pyramidale
+  ray_tracing:
+    n_bounces_max: 50
+    convergence_threshold: 1.0e-6
+    use_fresnel: true
+    # Plage de nombre de rayons pour étude de convergence
+    n_rays_convergence: [10, 100, 1000, 10000, 100000]
+
+# Constantes physiques (pour compatibilité)
+physical_constants:
+  h: 6.62607015e-34      # Constante de Planck (J·s)
+  c: 299792458.0         # Vitesse de la lumière (m/s)
+
+# Données expérimentales de référence
+experimental_data:
+  source: "Scheul et al. 2020, Progress in Photovoltaics 28(12):1248-1257"
+  doi: "10.1002/pip.3319"
+  measurement_type: hemispherical_reflectance
+  incidence_angle_deg: 8
+  wavelength_range_nm: [300, 1200]
+
+  # Fichiers de données (relatifs à data/)
+  data_files:
+    reflectance: scheul_2020_reflectance.csv          # Fig. 4: R(λ) hémisphérique
+    scattering_theta: MesuresScheul/scheul_2020_scattering_theta.csv  # Fig. 7: I(θ)
+    scattering_phi: MesuresScheul/scheul_2020_scattering_phi.csv      # Fig. 8B: I(φ)
+
+  # Legacy - pour compatibilité ascendante
+  data_file: scheul_2020_reflectance.csv
+
+# Paramètres d'optimisation inverse (calibration sur données expérimentales)
+# Utilisé par generate_pyramidal_comparison.py
+optimization:
+  # Paramètres à optimiser et leurs bornes
+  parameters:
+    sigma_rms_nm:
+      initial: 10.0
+      bounds: [0, 50]
+      step: 2.5
+      description: "Roughness RMS of pyramid facets"
+      uncertainty_relative: 0.30  # ±30% (k=2)
+    valley_fraction:
+      initial: 0.10
+      bounds: [0.0, 0.30]
+      step: 0.025
+      description: "Fraction of flat valley surface"
+      uncertainty_relative: 0.50  # ±50% (k=2)
+
+  # Paramètres fixés (mesurés indépendamment)
+  fixed_parameters:
+    facet_angle_deg:
+      value: 52.1
+      uncertainty: 1.1  # ±1.1° (k=2, FIB-SEM)
+      source: "FIB-SEM measurement, Scheul 2020"
+    incidence_angle_deg:
+      value: 8.0
+      uncertainty: 0.5  # ±0.5° (k=2)
+    wafer_thickness_um:
+      value: 270.0
+      bulk_thickness_um: 260.0  # Total - pyramids (~10µm)
+      uncertainty: 10.0  # ±10µm (k=2)
+
+  # Paramètres de l'algorithme d'optimisation
+  algorithm:
+    method: grid_search
+    n_rays_search: 2000    # Rays during grid search
+    n_rays_final: 5000     # Rays for final computation
+    seed: 42
+
+  # Propagation d'incertitude Monte-Carlo (GUM)
+  uncertainty_propagation:
+    method: monte_carlo
+    n_samples: 100         # MC samples (JCGM 101:2008)
+    n_rays_per_sample: 1000
+    coverage_factor: 2     # k=2 for 95% CI
+
+  # Résolution spectrale pour l'optimisation
+  wavelength_range_nm: [480, 1000]
+  wavelength_points: 53
+
+# Résultats de la calibration (mis à jour après optimisation)
+calibration_results:
+  method: "Grid search least squares fitting on reflectance data"
+  parameters_fitted:
+    - sigma_rms_nm
+    - valley_fraction
+  parameters_fixed:
+    - facet_angle_deg  # Mesuré indépendamment par FIB-SEM
+  rmse_percent: null   # À remplir après optimisation
+
+# Références bibliographiques
+references:
+  measurements: "Scheul et al. 2020, Optics Express 28(24)"
+  silicon_optical: "Green 2008, Solar Energy Materials and Solar Cells"
+  pyramid_geometry: "Baker-Finch & McIntosh 2011, Progress in Photovoltaics"
+  facet_angle_measurement: "FIB-SEM cross-section analysis"

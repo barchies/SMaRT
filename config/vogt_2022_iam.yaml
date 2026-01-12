@@ -1,0 +1,420 @@
+# Configuration pour la validation IAM - Vogt et al. (2022)
+# Module PV commercial c-Si standard conforme IEC 61853-2
+#
+# Référence: Vogt et al., "PV module I-V curve characterization and IAM
+#            measurements under IEC 61853-2 conditions", 2022
+# Zenodo Dataset: DOI: 10.5281/zenodo.5750185
+#
+# RÉSULTATS D'OPTIMISATION (5 paramètres: d_ARC + 4 rugosités):
+#   - RMSE optimisé ~0.7% avec d_ARC = 29.0 nm
+#   - Paramètres: σ_glass=12.5nm, σ_eva=1.9nm, σ_sinx=10nm, σ_si=0.1nm
+#   - Méthode: basé sur absorption Si (A_Si), pondérée AM1.5G
+#   - 12 points angulaires (0-85°)
+#
+# Comparaison (calcul A_Si avec 12 points):
+#   - AVEC ARC optimisé (29nm):   RMSE ~0.7%   ← MEILLEUR
+#   - AVEC ARC littérature (75nm): RMSE ~2.2%
+#   - Martin-Ruiz empirique:      RMSE ~1.28%
+
+description: "IAM validation against Vogt 2022 IEC 61853-2 measurements"
+
+# Structure du module (avant vers arrière)
+# Air / Verre / EVA / SiNx (sur wafer) / Si / EVA / Tedlar / Air
+#
+# Toutes les propriétés optiques sont chargées depuis des fichiers CSV
+# contenant n(λ) et k(λ) spectraux (data/optical_properties/materials/)
+structure:
+  layers:
+    - name: air_front
+      material: air
+      thickness_m: .inf
+      thickness_uncertainty_m: 0.0
+      # Air: n=1, k=0 (pas de fichier nécessaire)
+
+    - name: glass
+      material: glass_soda_lime
+      thickness_m: 3.2e-3          # 3.2 mm
+      thickness_uncertainty_m: 100.0e-6  # ±100 µm (1σ) - EN 572-2
+      optical_data: glass_vogt_703ppm.csv  # n(λ), k(λ) de Vogt 2017
+
+    - name: eva_front
+      material: eva
+      thickness_m: 450.0e-6       # 450 µm
+      thickness_uncertainty_m: 25.0e-6   # ±25 µm (1σ) - variation lamination
+      optical_data: eva_uvt_vogt2016.csv  # UV-transparent EVA (S87) - Vogt 2016
+
+    - name: arc_sinx
+      material: sinx
+      thickness_m: 75.0e-9        # 75 nm - Valeur littérature (Vogt 2016)
+      thickness_uncertainty_m: 5.0e-9    # ±5 nm (1σ) - PECVD uniformité
+      optical_data: SINx_Vogt_3.csv  # n(λ), k(λ) de Vogt 2016
+
+    - name: silicon
+      material: c-si
+      thickness_m: 180.0e-6       # 180 µm
+      thickness_uncertainty_m: 5.0e-6    # ±5 µm (1σ) - SEMI M1
+      optical_data: silicon_green2008.csv  # n(λ), k(λ) de Green 2008
+
+    - name: eva_rear
+      material: eva
+      thickness_m: 450.0e-6       # 450 µm
+      thickness_uncertainty_m: 25.0e-6   # ±25 µm (1σ)
+      optical_data: eva_uvt_vogt2016.csv  # UV-transparent EVA (S87)
+
+    - name: tedlar
+      material: tedlar
+      thickness_m: 350.0e-6       # 350 µm (backsheet)
+      thickness_uncertainty_m: 20.0e-6   # ±20 µm (1σ)
+      optical_data: tedlar_n_k_220_2200_10nm.csv
+
+    - name: air_rear
+      material: air
+      thickness_m: .inf
+      thickness_uncertainty_m: 0.0
+
+# Rugosité des interfaces (Debye-Waller) en nm RMS
+# Valeurs OPTIMISÉES par ajustement sur données Vogt 2022 (A_Si, RMSE~0.7%)
+# Référence initiale: Vogt 2016, Bennett & Porteus 1961
+roughness_nm:
+  air_glass: 12.5      # OPTIMISÉ (littérature: 2 nm)
+  glass_eva: 1.9       # OPTIMISÉ
+  eva_sinx: 10.0       # OPTIMISÉ
+  sinx_si: 0.1         # OPTIMISÉ - Interface PECVD (très lisse)
+  si_eva: 5.0          # Face arrière (non optimisé)
+  eva_tedlar: 10.0     # Polymère-polymère (non optimisé)
+
+# Réflecteur arrière (aluminium)
+# Johnson & Christy 1972
+rear_reflector:
+  material: aluminum
+  optical_data: aluminum_johnson_christy.csv  # n(λ), k(λ) spectraux
+  thickness_m: 2.0e-6  # 2 µm (optiquement épais)
+  # Valeurs de fallback si fichier non trouvé (à ~600 nm):
+  n: 1.08
+  k: 7.26
+
+# Constantes optiques par défaut pour matériaux sans fichier CSV
+# (utilisées si optical_data non spécifié)
+optical_constants_default:
+  glass:
+    n: 1.52
+    k: 1.0e-7          # Quasi-transparent
+  eva:
+    n: 1.49
+    k_uv: 5.0e-5       # λ < 400 nm (absorption UV)
+    k_vis: 1.0e-5      # λ ≥ 400 nm
+  sinx:
+    n: 2.05
+    k: 0.0             # Transparent
+  tedlar:
+    n: 1.5
+    k: 0.01            # Légèrement absorbant
+
+# Paramètres de simulation S-matrix
+simulation:
+  wavelength:
+    min_nm: 300
+    max_nm: 1100
+    step_nm: 10
+  angles_deg: [0, 10, 20, 30, 40, 50, 60, 70, 80]
+
+  # Moyennage de phase adaptatif
+  phase_averaging:
+    adaptive: true
+    coverage_sigma: 2.0      # ±2σ pour 95% de couverture
+    n_phase_max: 64
+    # Mode legacy (si adaptive=false):
+    coherence_length_um: 5.0
+    n_phase_points: 16
+
+  polarization: average      # Lumière non polarisée
+  diffuse_model: lambert     # Diffusion de surface
+
+# Données de réponse spectrale pour calibration jointe
+# Source: Vogt 2022 Zenodo dataset (DOI: 10.5281/zenodo.5750185)
+# Module 1, mesure à incidence normale
+spectral_response:
+  data_file: spectral_response_module1.csv  # wavelength_nm, SR_relative
+  n_points: 206                              # 280-1300 nm, step 5 nm
+  wavelength_range_nm: [280, 1300]
+  normalization: relative                    # Normalisée à 1.0 au maximum
+  # Incertitude estimée (non fournie dans dataset original)
+  uncertainty_relative: 0.02                 # ±2% (estimation conservative)
+
+# Calibration jointe IAM + SR
+# Configuration: 25 points de données pour 5 paramètres
+#   - IAM: 12 points angulaires (0-85°)
+#   - SR: 13 points spectraux (400-1000nm, pas 50nm)
+#   - Ratio n/p = 25/5 = 5.0 (acceptable)
+#
+# Sélection des 13 points SR dans la plage 400-1000nm:
+#   - Coupure UV (400nm): évite incertitudes absorption EVA/verre
+#   - Coupure NIR (1000nm): évite effets de bord de bande (Si Eg=1.12eV → 1107nm)
+joint_calibration:
+  enabled: true
+  weight_iam: 1.0           # Poids des données IAM
+  weight_sr: 1.0            # Poids des données SR (normalisé par n_points)
+  # Sélection des points SR
+  sr_selection:
+    enabled: true
+    wavelength_min_nm: 400
+    wavelength_max_nm: 1000
+    step_nm: 50
+    n_points: 13            # Calculé: (1000-400)/50 + 1 = 13
+  parameters_to_fit:
+    - d_arc                 # Épaisseur ARC (nm)
+    - d_glass               # Épaisseur verre (mm)
+    - d_eva                 # Épaisseur EVA (µm)
+    - d_si                  # Épaisseur silicium (µm)
+    - sigma_glass           # Rugosité verre (nm)
+    - sigma_sinx            # Rugosité SiNx (nm)
+    - L_eff                 # Longueur de diffusion effective (µm)
+    - S_front               # Vitesse recombinaison surface avant (cm/s)
+  # Bornes physiques (PAS de contrainte ±2σ littérature)
+  bounds:
+    d_arc_nm: [0, 120]      # 0-120 nm (inclut 0 pour test sans ARC)
+    d_glass_mm: [2.8, 3.6]  # 2.8-3.6 mm (nominal 3.2 mm ±10%)
+    d_eva_um: [350, 550]    # 350-550 µm (nominal 450 µm ±20%)
+    d_si_um: [150, 210]     # 150-210 µm (nominal 180 µm ±15%)
+    sigma_glass_nm: [0, 30] # 0-30 nm
+    sigma_sinx_nm: [0, 20]  # 0-20 nm
+
+# Paramètres pour modèles empiriques de comparaison
+empirical_models:
+  martin_ruiz:
+    ar: 0.14571          # Paramètre angulaire (pvlib default)
+  physical_iam:
+    n_glass: 1.526       # Indice verre pour modèle Fresnel
+    K: 4.0               # Coefficient d'extinction (m⁻¹)
+    L: 0.002             # Épaisseur optique (m)
+
+# Constantes physiques
+physical_constants:
+  h: 6.62607015e-34      # Constante de Planck (J·s)
+  c: 299792458.0         # Vitesse de la lumière (m/s)
+
+# Paramètres de transport électrique (pour calculs ΔJsc)
+# Référence: Sze & Ng, Physics of Semiconductor Devices, 3rd ed.
+electrical_transport:
+  L_n_um: 300.0          # Longueur de diffusion des électrons (µm)
+  D_n_cm2s: 27.0         # Coefficient de diffusion des électrons (cm²/s)
+  # Vitesses de recombinaison en surface arrière (cm/s)
+  # 10 = passivation excellente (Al₂O₃/SiNx)
+  # 1e4 = passivation moyenne
+
+# Modèle IQE (Internal Quantum Efficiency)
+# Référence: Basore 1993, Kittidachachan 2012, Abdullah-Vetter 2023
+# IQE(λ) = ∫η_c(z) × G(z,λ) dz
+# Pour module commercial c-Si standard (PERC-like):
+iqe_model:
+  # Paramètres de base
+  L_eff_um: 250.0        # Longueur de diffusion effective (µm)
+                          # Typique PERC: 200-400 µm
+  S_front_cms: 1000.0    # Vitesse recombinaison surface avant (cm/s)
+                          # Typique avec passivation: 100-10000 cm/s
+  S_back_cms: 100.0      # Vitesse recombinaison surface arrière (cm/s)
+                          # PERC avec Al₂O₃: 10-500 cm/s
+  W_emitter_um: 0.5      # Profondeur émetteur (µm)
+                          # Typique n+ émetteur: 0.3-1.0 µm
+  # Paramètres dérivés (calculés à partir des ci-dessus)
+  D_n_cm2s: 27.0         # Coefficient de diffusion (cm²/s)
+
+  # Bornes pour calibration jointe (si IQE params ajustés)
+  bounds:
+    L_eff_um: [50, 500]     # 50-500 µm
+    S_front_cms: [100, 50000]  # 100-50000 cm/s
+    S_back_cms: [10, 10000]    # 10-10000 cm/s
+  # 1e5 = contact Al direct (BSF classique)
+  S_rear_values_cms: [10, 1.0e4, 1.0e5]
+
+# Paramètres de simulation G(z)
+generation_profile:
+  z_resolution_points: 1000    # Points de discrétisation en z
+  wavelength_step_nm: 5        # Résolution spectrale fine
+
+# Paramètres d'optimisation inverse (calibration sur données expérimentales)
+# Utilisé par optimize_iam_inverse.py
+optimization:
+  # Paramètres à optimiser et leurs bornes
+  parameters:
+    d_arc_nm:
+      initial: 75.0
+      bounds: [0, 120]        # 0 permet de tester sans ARC
+      description: "SiNx ARC thickness"
+    sigma_glass_nm:
+      initial: 3.0
+      bounds: [0.5, 15]
+      description: "Glass/air interface roughness"
+    sigma_sinx_nm:
+      initial: 2.0
+      bounds: [0.1, 10]
+      description: "SiNx roughness (PECVD can be very smooth)"
+    sigma_si_nm:
+      initial: 3.0
+      bounds: [0.5, 15]
+      description: "Si/SiNx interface roughness"
+
+  # Paramètres de l'algorithme d'optimisation
+  algorithm:
+    method: differential_evolution
+    maxiter: 50
+    popsize: 10
+    tol: 0.01
+    seed: 42
+
+  # Résolution spectrale pour l'optimisation (réduite pour vitesse)
+  wavelength_range_nm: [400, 1100]
+  wavelength_points: 15        # Réduit pour optimisation rapide
+
+# Données expérimentales de référence
+experimental_data:
+  source: "Vogt et al. 2022, Zenodo DOI: 10.5281/zenodo.5750185"
+  measurement_type: IAM
+  standard: IEC_61853-2
+  simulator_class: AAA
+  spectrum: AM1.5G
+  # Points de données IAM (angle_deg, IAM_value)
+  # Source: Zenodo DOI 10.5281/zenodo.5750185 - iam_measured_module1.csv
+  iam_measured:
+    - [0, 1.0000]
+    - [10, 0.9991]
+    - [20, 0.9986]
+    - [30, 0.9974]
+    - [40, 0.9939]
+    - [50, 0.9848]
+    - [60, 0.9616]
+    - [65, 0.9350]
+    - [70, 0.8903]
+    - [75, 0.8160]
+    - [80, 0.6938]
+    - [85, 0.4865]
+
+# Module électrique (pour contexte)
+module_specs:
+  type: "c-Si mono 60 cells"
+  power_stc_w: 280.47
+  cells_series: 60
+  cells_parallel: 1
+
+# Paramètres de light-trapping (modèle hybride HybridSMatrixCoupled)
+# Combine S-matrix (couches minces) + ray-tracing (light-trapping)
+# Référence: Baker-Finch & McIntosh, JAP 2011
+#
+# TOUS les paramètres sont OBLIGATOIRES - pas de valeurs par défaut
+light_trapping:
+  # Ray-tracing multi-passes
+  n_passes_max: 50                    # Nombre max de passages (convergence)
+
+  # Géométrie des pyramides (texture KOH)
+  pyramid_facet_angle_deg: 54.74      # Angle facette {111} depuis l'horizontale
+
+  # AR coating sur verre (obligatoire)
+  ar_glass: true                      # Activer l'AR coating sur verre
+  ar_glass_material: glass_arc_porous.csv  # Fichier n(λ), k(λ)
+  ar_glass_d_nm: 90.0                 # Épaisseur de l'ARC verre (nm)
+
+  # Rugosité des surfaces (nm RMS)
+  sigma_glass_nm: 14.92               # Rugosité verre (calibré IAM)
+  sigma_sinx_nm: 0.25                 # Rugosité SiNx (calibré IAM)
+
+  # Fichiers de propriétés optiques des matériaux (OBLIGATOIRES)
+  # Ces fichiers contiennent n(λ) et k(λ) spectraux
+  optical_materials:
+    glass: glass_vogt_703ppm.csv        # Verre soda-lime - Vogt 2017
+    eva: eva_uvt_vogt2016.csv           # EVA UV-transparent - Vogt 2016
+    sinx: SINx_Vogt_3.csv               # SiNx ARC - Vogt 2016
+    silicon: silicon_green2008.csv      # c-Si - Green 2008
+    aluminum: aluminum_johnson_christy.csv  # Al réflecteur - Johnson & Christy 1972
+    tedlar: tedlar_n_k_220_2200_10nm.csv  # Tedlar backsheet
+
+  # Matériau EVA (conservé pour compatibilité, utiliser optical_materials.eva)
+  eva_material: eva_uvt_vogt2016.csv  # UV-transparent EVA
+
+  # Paramètres du solveur S-matrix (TOUS obligatoires)
+  smatrix:
+    coherence_length_um: 5.0          # Longueur de cohérence (µm)
+    n_phase_points: auto              # 'auto' ou entier (1, 4, 8, 16, ...)
+    min_phase_points: 4               # Min pour le mode 'auto'
+    max_phase_points: 32              # Max pour le mode 'auto'
+    diffuse_model: lambert            # 'lambert', 'beckmann', ou 'none'
+
+  # Bornes pour calibration
+  bounds:
+    sigma_glass_nm: [0, 30]           # Rugosité verre
+    sigma_sinx_nm: [0, 10]            # Rugosité SiNx
+
+# Paramètres du modèle Angular Redistribution Matrix v2
+angular_redistribution:
+  n_angle_bins: 36                    # Nombre de bins angulaires
+  max_angle_deg: 87.5                 # Angle maximum (degrés)
+  wavelength_range_nm: [400, 1100]    # Gamme spectrale pour calibration IAM
+  wavelength_points: 11               # Nombre de points spectraux
+
+  # Paramètres d'optimisation ARM v2 (5 paramètres)
+  optimization:
+    parameters:
+      d_arc_nm:
+        bounds: [50, 100]             # Épaisseur ARC (nm)
+        description: "SiNx ARC thickness"
+      sigma_glass_nm:
+        bounds: [0, 30]               # Rugosité verre (nm)
+        description: "Glass/air interface roughness"
+      sigma_sinx_nm:
+        bounds: [0, 20]               # Rugosité SiNx (nm)
+        description: "SiNx surface roughness"
+      angular_spread_deg:
+        bounds: [2, 20]               # Spread angulaire (degrés)
+        description: "Angular redistribution spread"
+      diffuse_fraction:
+        bounds: [0.0, 0.3]            # Fraction diffuse
+        description: "Fraction of diffuse component"
+
+    # Paramètres de l'algorithme d'optimisation
+    algorithm:
+      method: differential_evolution
+      maxiter: 40
+      popsize: 8
+      tol: 0.0001
+      seed: 42
+      polish: true
+
+# Incertitudes pour propagation GUM
+# Valeurs relatives (k=1) pour chaque paramètre
+# Référence: GUM (JCGM 100:2008)
+uncertainties:
+  # Incertitudes des paramètres calibrés (pour propagation GUM)
+  parameter_relative:
+    d_arc: 0.05           # 5% sur épaisseur ARC (PECVD uniformité)
+    d_glass: 0.03         # 3% sur épaisseur verre (EN 572-2)
+    d_si: 0.03            # 3% sur épaisseur Si (SEMI M1)
+    sigma_glass: 0.20     # 20% sur rugosité verre (mesure AFM)
+    sigma_sinx: 0.30      # 30% sur rugosité SiNx
+    L_eff: 0.30           # 30% sur longueur diffusion (corrélé)
+    S_front: 0.50         # 50% sur vitesse recombinaison avant
+    S_back: 0.50          # 50% sur vitesse recombinaison arrière
+    W_dead: 0.30          # 30% sur zone morte
+
+  # Incertitudes expérimentales IAM (IEC 61853-2)
+  iam_experimental:
+    low_angle_k1: 0.008   # ±0.8% pour θ < 60° (k=1)
+    high_angle_k1: 0.015  # ±1.5% pour θ ≥ 60° (k=1)
+    angle_threshold_deg: 60
+
+  # Incertitudes expérimentales SR (IEC 60904-8)
+  sr_experimental:
+    uv_nir_k1: 0.020      # ±2.0% pour UV et NIR (k=1)
+    visible_k1: 0.013     # ±1.3% pour visible (k=1)
+
+  # Facteur de couverture GUM
+  coverage_factor: 2      # k=2 pour 95% de confiance
+
+# Références bibliographiques
+references:
+  optical_constants:
+    silicon: "Green 2008, Solar Energy Materials and Solar Cells"
+    glass: "Vogt 2017, Energy Procedia"
+    eva: "Vogt 2016, Energy Procedia 92, 523-530 (UV-transparent EVA S87)"
+    sinx: "Vogt 2016, Energy Procedia"
+  structure: "Vogt et al. 2016, Energy Procedia 92, 225-231"
+  measurements: "Vogt et al. 2022, Zenodo 10.5281/zenodo.5750185"
+  eva_uvt: "Vogt et al. 2016, 'Optical constants of UV transparent EVA', Energy Procedia 92, 523-530"

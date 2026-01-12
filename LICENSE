@@ -1,0 +1,61 @@
+SMaRT - S-Matrix and Ray-Tracing Optical Solver
+Copyright (c) 2026 Dominique Barchiesi
+
+================================================================================
+DUAL LICENSE AGREEMENT
+================================================================================
+
+This software is released under a dual licensing model:
+
+--------------------------------------------------------------------------------
+1. ACADEMIC/RESEARCH LICENSE (Free)
+--------------------------------------------------------------------------------
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, and distribute the Software for academic, educational, and
+non-commercial research purposes, subject to the following conditions:
+
+a) The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+b) Any academic publication or presentation that makes use of the Software
+   shall cite the associated paper:
+
+   Barchiesi, D. (2026). Hybrid S-Matrix and Ray-Tracing Optical Model for
+   Encapsulated Crystalline Silicon Photovoltaic Modules. Solar Energy
+   Materials and Solar Cells.
+
+c) The Software is provided "AS IS", without warranty of any kind, express or
+   implied, including but not limited to the warranties of merchantability,
+   fitness for a particular purpose and noninfringement.
+
+d) In no event shall the authors or copyright holders be liable for any claim,
+   damages or other liability, whether in an action of contract, tort or
+   otherwise, arising from, out of or in connection with the Software.
+
+--------------------------------------------------------------------------------
+2. COMMERCIAL LICENSE
+--------------------------------------------------------------------------------
+
+For commercial use of this Software, including but not limited to:
+- Integration into commercial products or services
+- Use in commercial software development
+- Deployment in commercial photovoltaic system design tools
+- Any use generating direct or indirect commercial revenue
+
+A separate commercial license must be obtained from the author.
+
+Contact: dominique.barchiesi@utt.fr
+
+================================================================================
+THIRD-PARTY DEPENDENCIES
+================================================================================
+
+This software makes use of the following open-source libraries:
+- NumPy (BSD License)
+- SciPy (BSD License)
+- Numba (BSD License)
+- PyYAML (MIT License)
+
+These dependencies are subject to their own respective licenses.
