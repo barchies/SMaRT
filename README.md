@@ -35,7 +35,7 @@ Validated against experimental measurements:
 
 ```bash
 pip install numpy scipy numba pyyaml
-git clone https://github.com/dbarchiesi/SMaRT.git
+git clone https://github.com/barchies/SMaRT.git
 cd SMaRT
 ```
 
@@ -114,7 +114,7 @@ If you use SMaRT in your research, please cite:
   journal = {Solar Energy Materials and Solar Cells},
   year = {2026},
   doi = {10.xxxx/xxxxx},
-  note = {Code available at https://github.com/dbarchiesi/SMaRT}
+  note = {Code available at https://github.com/barchies/SMaRT}
 }
 ```
 
