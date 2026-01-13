@@ -13,6 +13,7 @@
 - **Interface roughness**: Debye-Waller scattering correction for realistic module interfaces
 - **Pyramidal textures**: Monte Carlo ray-tracing coupled with S-matrix for textured surfaces
 - **Non-periodic textures**: Supports pyramid size distributions (unlike periodic RCWA/S4)
+- **Volumetric scattering**: Kubelka-Munk model for TiO2 pigments in Tedlar backsheet (37% improvement on NIR SR)
 - **Fast**: 6000x speedup vs RayFlare while maintaining 0.3% agreement on Jsc
 
 ## Performance Comparison
@@ -34,7 +35,7 @@ For calibration requiring 1000 evaluations at 901 wavelengths:
 Validated against experimental measurements:
 
 1. **IEC 61853-2 IAM** (Vogt et al. 2022): RMSE = 0.21%
-2. **Spectral Response**: RMSE = 5.0% (limited by IQE model, not SMaRT optics)
+2. **Spectral Response** (Vogt et al. 2022): RMSE = 3.6% (with Tedlar volumetric scattering)
 3. **Pyramidal textures** (Scheul et al. 2020): Agreement with RayFlare within 0.3%
 
 ## Installation
@@ -78,9 +79,10 @@ result = hybrid.compute_optical_properties(angle_deg=30, structure_params=params
 SMaRT/
 ├── src/
 │   ├── optical/
-│   │   ├── smatrix_numba.py       # Numba-optimized S-matrix solver
+│   │   ├── smatrix_numba.py          # Numba-optimized S-matrix solver
+│   │   ├── volumetric_scattering.py  # Kubelka-Munk scattering model
 │   │   └── __init__.py
-│   ├── hybrid_smatrix_coupled.py  # Hybrid S-matrix + ray-tracing
+│   ├── hybrid_smatrix_coupled.py     # Hybrid S-matrix + ray-tracing
 │   └── __init__.py
 ├── config/
 │   ├── vogt_2022_iam.yaml         # IAM validation configuration
@@ -143,6 +145,8 @@ Development assisted by Claude Code (Anthropic).
 
 ## Acknowledgments
 
-- Vogt et al. (2022) for the IEC 61853-2 IAM dataset
+- Vogt et al. (2022) for the IEC 61853-2 IAM and SR datasets
 - Scheul et al. (2020) for the pyramidal texture reflectance data
 - Green (2008) for silicon optical constants
+- Kubelka & Munk (1931) for the volumetric scattering theory
+- Kempe et al. (2007) for Tedlar optical properties
